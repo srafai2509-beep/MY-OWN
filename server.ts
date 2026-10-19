@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -13,8 +13,21 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 const SOFIA_EMAIL = 'srafai.6768@gmail.com';
+const ADMIN_API_KEY = process.env.ADMIN_API_KEY || 'sofia-admin-secret';
 
-app.use(express.json());
+// Security Headers Middleware
+app.use((_req: Request, res: Response, next: NextFunction) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  next();
+});
+
+// Enforce strict JSON body size limit to prevent Denial of Service (DoS)
+app.use(express.json({ limit: '50kb' }));
+
+// Serve static assets
 app.use(express.static(path.resolve(__dirname, 'public')));
 app.use('/images', express.static(path.resolve(__dirname, 'public/images')));
 
@@ -34,29 +47,105 @@ export interface QuoteRecord {
   emailError?: string;
 }
 
-// In-memory store for quotation inquiries
+// In-memory store with bounded capacity to prevent memory exhaustion
+const MAX_QUOTES = 100;
 const quotationSubmissions: QuoteRecord[] = [];
 
-// POST /api/quote - Process and send quote request to Sofia Rafai
-app.post('/api/quote', async (req, res) => {
-  try {
-    const {
-      name,
-      email,
-      phone,
-      services = [],
-      budgetRange = 'Flexible',
-      timeline = 'Standard',
-      description = '',
-      preferredLanguage = 'English / Hindi',
-      businessType = 'Small Business / Brand'
-    } = req.body;
+// In-memory IP rate limiter for quotation submissions
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+const MAX_REQUESTS_PER_WINDOW = 5; // max 5 quote submissions per 10 mins
 
-    if (!name || (!email && !phone)) {
+function rateLimiter(req: Request, res: Response, next: NextFunction) {
+  const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown-ip';
+  const now = Date.now();
+  const record = rateLimitMap.get(ip);
+
+  if (!record || now > record.resetTime) {
+    rateLimitMap.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return next();
+  }
+
+  if (record.count >= MAX_REQUESTS_PER_WINDOW) {
+    return res.status(429).json({
+      success: false,
+      error: 'Too many quote requests. Please wait a few minutes or reach out directly on WhatsApp.'
+    });
+  }
+
+  record.count += 1;
+  next();
+}
+
+// Helper: Escape untrusted user input before embedding into email HTML
+function escapeHtml(unsafe: unknown): string {
+  if (typeof unsafe !== 'string') return '';
+  return unsafe
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// Regex for validation
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_CLEAN_REGEX = /^[\d\s\+\-\(\)]{6,25}$/;
+
+// POST /api/quote - Process and send quote request with strict validation
+app.post('/api/quote', rateLimiter, async (req: Request, res: Response) => {
+  try {
+    const rawBody = req.body || {};
+    
+    // Type and length constraints
+    const name = typeof rawBody.name === 'string' ? rawBody.name.trim().slice(0, 100) : '';
+    const email = typeof rawBody.email === 'string' ? rawBody.email.trim().slice(0, 120) : '';
+    const phone = typeof rawBody.phone === 'string' ? rawBody.phone.trim().slice(0, 30) : '';
+    const businessType = typeof rawBody.businessType === 'string' ? rawBody.businessType.trim().slice(0, 100) : 'Individual / Brand';
+    const budgetRange = typeof rawBody.budgetRange === 'string' ? rawBody.budgetRange.trim().slice(0, 80) : 'Flexible';
+    const timeline = typeof rawBody.timeline === 'string' ? rawBody.timeline.trim().slice(0, 80) : 'Standard';
+    const description = typeof rawBody.description === 'string' ? rawBody.description.trim().slice(0, 2000) : '';
+    const preferredLanguage = typeof rawBody.preferredLanguage === 'string' ? rawBody.preferredLanguage.trim().slice(0, 80) : 'English & Hindi';
+
+    // Validate required fields
+    if (!name || name.length < 2) {
       return res.status(400).json({
         success: false,
-        error: 'Please provide your name and at least an email or phone number.'
+        error: 'Please enter a valid name (at least 2 characters).'
       });
+    }
+
+    if (!email && !phone) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please provide at least a contact email or phone number.'
+      });
+    }
+
+    if (email && !EMAIL_REGEX.test(email)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please enter a valid email address.'
+      });
+    }
+
+    if (phone && !PHONE_CLEAN_REGEX.test(phone)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please enter a valid phone number (digits, spaces, +).'
+      });
+    }
+
+    // Validate services array
+    let sanitizedServices: string[] = [];
+    if (Array.isArray(rawBody.services)) {
+      sanitizedServices = rawBody.services
+        .filter((s: unknown): s is string => typeof s === 'string' && s.trim().length > 0)
+        .map((s: string) => s.trim().slice(0, 80))
+        .slice(0, 10);
+    }
+    if (sanitizedServices.length === 0) {
+      sanitizedServices = ['General Creative Consultation'];
     }
 
     const quoteId = `QUOTE-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
@@ -65,7 +154,7 @@ app.post('/api/quote', async (req, res) => {
       name,
       email,
       phone,
-      services: Array.isArray(services) ? services : [services],
+      services: sanitizedServices,
       budgetRange,
       timeline,
       description,
@@ -75,13 +164,7 @@ app.post('/api/quote', async (req, res) => {
       emailDispatched: false
     };
 
-    console.log('----------------------------------------------------');
-    console.log(`[NEW QUOTATION RECEIVED FOR SOFIA RAFAI]`);
-    console.log(`From: ${name} (${email || 'No email provided'} | ${phone || 'No phone provided'})`);
-    console.log(`Services: ${newQuote.services.join(', ')}`);
-    console.log(`Budget: ${budgetRange} | Timeline: ${timeline}`);
-    console.log(`Notes: ${description}`);
-    console.log('----------------------------------------------------');
+    console.log(`[QUOTATION SUBMITTED] ID: ${quoteId} | Client: ${name} | Services: ${sanitizedServices.length}`);
 
     // Attempt to dispatch email if SMTP is configured
     let emailSent = false;
@@ -99,11 +182,23 @@ app.post('/api/quote', async (req, res) => {
           },
         });
 
+        // Escaped HTML template preventing HTML injection attacks
+        const safeName = escapeHtml(name);
+        const safeEmail = escapeHtml(email);
+        const safePhone = escapeHtml(phone);
+        const safeBusinessType = escapeHtml(businessType);
+        const safeServices = escapeHtml(sanitizedServices.join(', '));
+        const safeBudget = escapeHtml(budgetRange);
+        const safeTimeline = escapeHtml(timeline);
+        const safeLanguage = escapeHtml(preferredLanguage);
+        const safeDescription = escapeHtml(description);
+        const cleanPhoneDigits = phone.replace(/[^0-9]/g, '');
+
         await transporter.sendMail({
           from: `"Sofia Portfolio Quotations" <${process.env.SMTP_USER}>`,
           to: SOFIA_EMAIL,
           replyTo: email || undefined,
-          subject: `✨ New Client Quotation Request: ${name} (${newQuote.services.slice(0, 2).join(', ')})`,
+          subject: `✨ New Client Quotation Request: ${safeName} (${sanitizedServices.slice(0, 2).join(', ')})`,
           html: `
             <div style="font-family: sans-serif; background: #0c0d10; color: #e4e4e9; padding: 24px; border-radius: 8px;">
               <h2 style="color: #d4af37; margin-top: 0;">New Project Quotation Request</h2>
@@ -112,49 +207,51 @@ app.post('/api/quote', async (req, res) => {
               <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
                 <tr>
                   <td style="padding: 8px; border-bottom: 1px solid #27272a; color: #a1a1aa; width: 140px;">Client Name:</td>
-                  <td style="padding: 8px; border-bottom: 1px solid #27272a; color: #ffffff; font-weight: bold;">${name}</td>
+                  <td style="padding: 8px; border-bottom: 1px solid #27272a; color: #ffffff; font-weight: bold;">${safeName}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px; border-bottom: 1px solid #27272a; color: #a1a1aa;">Email:</td>
-                  <td style="padding: 8px; border-bottom: 1px solid #27272a; color: #d4af37;"><a href="mailto:${email}" style="color: #d4af37;">${email || 'N/A'}</a></td>
+                  <td style="padding: 8px; border-bottom: 1px solid #27272a; color: #d4af37;">${safeEmail ? `<a href="mailto:${safeEmail}" style="color: #d4af37;">${safeEmail}</a>` : 'N/A'}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px; border-bottom: 1px solid #27272a; color: #a1a1aa;">Phone / WhatsApp:</td>
-                  <td style="padding: 8px; border-bottom: 1px solid #27272a; color: #ffffff;"><a href="https://wa.me/${phone?.replace(/[^0-9]/g, '')}" style="color: #34d399;">${phone || 'N/A'}</a></td>
+                  <td style="padding: 8px; border-bottom: 1px solid #27272a; color: #ffffff;">${safePhone ? `<a href="https://wa.me/${cleanPhoneDigits}" style="color: #34d399;">${safePhone}</a>` : 'N/A'}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px; border-bottom: 1px solid #27272a; color: #a1a1aa;">Business Type:</td>
-                  <td style="padding: 8px; border-bottom: 1px solid #27272a; color: #ffffff;">${businessType}</td>
+                  <td style="padding: 8px; border-bottom: 1px solid #27272a; color: #ffffff;">${safeBusinessType}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px; border-bottom: 1px solid #27272a; color: #a1a1aa;">Requested Services:</td>
-                  <td style="padding: 8px; border-bottom: 1px solid #27272a; color: #ffffff;">${newQuote.services.join(', ')}</td>
+                  <td style="padding: 8px; border-bottom: 1px solid #27272a; color: #ffffff;">${safeServices}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px; border-bottom: 1px solid #27272a; color: #a1a1aa;">Budget Range:</td>
-                  <td style="padding: 8px; border-bottom: 1px solid #27272a; color: #ffffff;">${budgetRange}</td>
+                  <td style="padding: 8px; border-bottom: 1px solid #27272a; color: #ffffff;">${safeBudget}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px; border-bottom: 1px solid #27272a; color: #a1a1aa;">Target Timeline:</td>
-                  <td style="padding: 8px; border-bottom: 1px solid #27272a; color: #ffffff;">${timeline}</td>
+                  <td style="padding: 8px; border-bottom: 1px solid #27272a; color: #ffffff;">${safeTimeline}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px; border-bottom: 1px solid #27272a; color: #a1a1aa;">Preferred Language:</td>
-                  <td style="padding: 8px; border-bottom: 1px solid #27272a; color: #ffffff;">${preferredLanguage}</td>
+                  <td style="padding: 8px; border-bottom: 1px solid #27272a; color: #ffffff;">${safeLanguage}</td>
                 </tr>
               </table>
 
               <div style="margin-top: 20px; padding: 16px; background: #161720; border: 1px solid #3f3f46; border-radius: 6px;">
                 <h4 style="margin: 0 0 8px 0; color: #d4af37;">Project Brief / Message:</h4>
-                <p style="margin: 0; color: #e4e4e9; line-height: 1.6;">${description || 'No additional notes provided.'}</p>
+                <p style="margin: 0; color: #e4e4e9; line-height: 1.6;">${safeDescription || 'No additional notes provided.'}</p>
               </div>
 
-              <div style="margin-top: 24px; text-align: center;">
-                <a href="https://wa.me/${phone?.replace(/[^0-9]/g, '')}?text=Hi%20${encodeURIComponent(name)},%20I%20received%20your%20quotation%20request%20on%20my%20portfolio." 
-                   style="background: #d4af37; color: #0c0d10; padding: 10px 20px; text-decoration: none; font-weight: bold; border-radius: 4px; display: inline-block;">
-                   Reply on WhatsApp
-                </a>
-              </div>
+              ${cleanPhoneDigits ? `
+                <div style="margin-top: 24px; text-align: center;">
+                  <a href="https://wa.me/${cleanPhoneDigits}?text=Hi%20${encodeURIComponent(name)},%20I%20received%20your%20quotation%20request%20on%20my%20portfolio." 
+                     style="background: #d4af37; color: #0c0d10; padding: 10px 20px; text-decoration: none; font-weight: bold; border-radius: 4px; display: inline-block;">
+                     Reply to Client on WhatsApp
+                  </a>
+                </div>
+              ` : ''}
             </div>
           `,
         });
@@ -162,26 +259,30 @@ app.post('/api/quote', async (req, res) => {
         emailSent = true;
         emailStatusMessage = 'Dispatched to Sofia Rafai inbox successfully.';
       } catch (err: unknown) {
-        console.error('SMTP dispatch failed:', err);
-        newQuote.emailError = err instanceof Error ? err.message : String(err);
+        console.error('SMTP dispatch failed:', err instanceof Error ? err.message : err);
+        newQuote.emailError = 'SMTP dispatch failed; logged to internal repository.';
       }
     } else {
-      // Direct formatted mailto string is also provided to client UI for guaranteed delivery
-      emailStatusMessage = 'Logged to Sofia Rafai quote submissions repository.';
+      emailStatusMessage = 'Logged to Sofia Rafai quote repository.';
     }
 
     newQuote.emailDispatched = emailSent;
-    quotationSubmissions.unshift(newQuote);
 
-    // Generate preformatted mailto and WhatsApp deep links so the client can trigger instant email from their own email app as well
-    const mailtoSubject = encodeURIComponent(`Quotation Request from ${name} - ${newQuote.services[0] || 'Creative Services'}`);
+    // Maintain bounded memory store
+    quotationSubmissions.unshift(newQuote);
+    if (quotationSubmissions.length > MAX_QUOTES) {
+      quotationSubmissions.pop();
+    }
+
+    // Direct preformatted mailto and WhatsApp deep links
+    const mailtoSubject = encodeURIComponent(`Quotation Request from ${name} - ${sanitizedServices[0] || 'Creative Services'}`);
     const mailtoBody = encodeURIComponent(
-      `Hi Sofia,\n\nI have submitted a quotation request on your portfolio:\n\nClient Name: ${name}\nPhone: ${phone}\nEmail: ${email}\nBusiness: ${businessType}\nServices: ${newQuote.services.join(', ')}\nBudget: ${budgetRange}\nTimeline: ${timeline}\nPreferred Language: ${preferredLanguage}\n\nProject Brief:\n${description}\n\nLooking forward to hearing from you!`
+      `Hi Sofia,\n\nI have submitted a quotation request on your portfolio:\n\nClient Name: ${name}\nPhone: ${phone}\nEmail: ${email}\nBusiness: ${businessType}\nServices: ${sanitizedServices.join(', ')}\nBudget: ${budgetRange}\nTimeline: ${timeline}\nPreferred Language: ${preferredLanguage}\n\nProject Brief:\n${description}\n\nLooking forward to hearing from you!`
     );
     const directMailtoUrl = `mailto:${SOFIA_EMAIL}?subject=${mailtoSubject}&body=${mailtoBody}`;
 
     const whatsappText = encodeURIComponent(
-      `Hi Sofia, I just submitted a project quotation request on your website:\n• Name: ${name}\n• Services: ${newQuote.services.join(', ')}\n• Budget: ${budgetRange}\n• Timeline: ${timeline}\n\nBrief: ${description || 'Please review my request.'}`
+      `Hi Sofia, I just submitted a project quotation request on your website:\n• Name: ${name}\n• Services: ${sanitizedServices.join(', ')}\n• Budget: ${budgetRange}\n• Timeline: ${timeline}\n\nBrief: ${description || 'Please review my request.'}`
     );
     const directWhatsAppUrl = `https://wa.me/919909663883?text=${whatsappText}`;
     const directWhatsAppUrlAlt = `https://wa.me/919265145093?text=${whatsappText}`;
@@ -189,7 +290,11 @@ app.post('/api/quote', async (req, res) => {
     return res.status(200).json({
       success: true,
       message: 'Quotation request received successfully!',
-      quote: newQuote,
+      quote: {
+        id: newQuote.id,
+        createdAt: newQuote.createdAt,
+        services: newQuote.services
+      },
       emailStatus: emailStatusMessage,
       directMailtoUrl,
       directWhatsAppUrl,
@@ -198,17 +303,34 @@ app.post('/api/quote', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error handling quote:', error);
+    console.error('Error processing quotation:', error);
     return res.status(500).json({
       success: false,
-      error: 'Failed to process quotation request. Please reach out via WhatsApp or email directly.'
+      error: 'An internal error occurred while processing your quotation request. Please reach out via WhatsApp or email directly.'
     });
   }
 });
 
-// GET /api/quotes - List all submitted quotes
-app.get('/api/quotes', (req, res) => {
+// GET /api/quotes - Authenticated administrative endpoint
+app.get('/api/quotes', (req: Request, res: Response) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({
+      success: false,
+      error: 'Unauthorized: Authentication token is required to access client quotations.'
+    });
+  }
+
+  const token = authHeader.split(' ')[1];
+  if (token !== ADMIN_API_KEY) {
+    return res.status(403).json({
+      success: false,
+      error: 'Forbidden: Invalid administrator credentials.'
+    });
+  }
+
   res.json({
+    success: true,
     total: quotationSubmissions.length,
     quotes: quotationSubmissions
   });
@@ -225,7 +347,7 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     app.use(express.static(path.resolve(__dirname, 'dist')));
-    app.get('*', (_req, res) => {
+    app.get('*', (_req: Request, res: Response) => {
       res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
     });
   }
