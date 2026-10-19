@@ -31,3 +31,36 @@ jobs:
         run: bun run lint
       - name: Build production assets
         run: bun run build
+      - name: Smoke-test production server security responses
+        shell: bash
+        run: |
+          set -euo pipefail
+          NODE_ENV=production PORT=4173 bun run start > /tmp/rafai-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+
+          ready=0
+          for attempt in {1..30}; do
+            if curl --silent --fail http://127.0.0.1:4173/ -o /dev/null; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" -ne 1 ]; then
+            cat /tmp/rafai-server.log
+            echo "Production server did not become ready."
+            exit 1
+          fi
+
+          curl --silent --show-error --head http://127.0.0.1:4173/ > /tmp/rafai-headers.txt
+          grep -Eiq '^content-security-policy:' /tmp/rafai-headers.txt
+          grep -Eiq '^x-content-type-options: nosniff' /tmp/rafai-headers.txt
+          grep -Eiq '^strict-transport-security:' /tmp/rafai-headers.txt
+
+          admin_status=$(curl --silent --output /tmp/rafai-admin-response.json --write-out '%{http_code}' http://127.0.0.1:4173/api/quotes)
+          test "$admin_status" = "503"
+
+          quote_status=$(curl --silent --output /tmp/rafai-quote-response.json --dump-header /tmp/rafai-quote-headers.txt --write-out '%{http_code}' -X POST -H 'Content-Type: application/json' --data '{}' http://127.0.0.1:4173/api/quote)
+          test "$quote_status" = "400"
+          grep -Eiq '^cache-control:.*no-store' /tmp/rafai-quote-headers.txt
