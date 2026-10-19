@@ -10,7 +10,7 @@ Please do not publish credentials, client data, or exploitable details in a publ
 - Set a unique `ADMIN_API_KEY` with at least 32 random characters in the server hosting environment. Do not prefix it with `VITE_` and never place it in frontend code.
 - Configure SMTP credentials only in the hosting provider's secret/environment settings.
 - Use HTTPS at the hosting edge. HSTS is emitted only when `NODE_ENV=production`; do not use the service over plain HTTP in production.
-- If running behind a reverse proxy, configure Express `trust proxy` only for the exact trusted proxy chain. Never trust arbitrary client-supplied `X-Forwarded-For`.
+- If running behind a reverse proxy, set `TRUST_PROXY_HOPS` to the exact number of trusted proxies only after verifying the hosting topology. Leave it unset for direct connections. Never trust arbitrary client-supplied `X-Forwarded-For`.
 - Keep dependencies updated and review CI results before merging.
 - Restrict repository write access and enable secret scanning/push protection and Dependabot alerts in GitHub settings where available.
 
