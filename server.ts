@@ -207,7 +207,7 @@ app.post('/api/quote', rateLimiter, async (req: Request, res: Response) => {
       emailDispatched: false
     };
 
-    console.log(`[QUOTATION SUBMITTED] ID: ${quoteId} | Client: ${name.replace(/[\\r\\n\\t]/g, ' ')} | Services: ${sanitizedServices.length}`);
+    console.log(`[QUOTATION SUBMITTED] ID: ${quoteId} | Client: ${name.replace(/[\r\n\t]/g, ' ')} | Services: ${sanitizedServices.length}`);
 
     // Attempt to dispatch email if SMTP is configured
     let emailSent = false;
@@ -241,7 +241,7 @@ app.post('/api/quote', rateLimiter, async (req: Request, res: Response) => {
           from: `"Sofia Portfolio Quotations" <${process.env.SMTP_USER}>`,
           to: SOFIA_EMAIL,
           replyTo: email || undefined,
-          subject: `New Client Quotation Request: ${name.replace(/[\\r\\n\\t]/g, ' ').slice(0, 100)} (${sanitizedServices.slice(0, 2).join(', ').replace(/[\\r\\n\\t]/g, ' ').slice(0, 160)})`,
+subject: `New Client Quotation Request: ${name.replace(/[\r\n\t]/g, ' ').slice(0, 100)} (${sanitizedServices.slice(0, 2).join(', ').replace(/[\r\n\t]/g, ' ').slice(0, 160)})`,
           html: `
             <div style="font-family: sans-serif; background: #0c0d10; color: #e4e4e9; padding: 24px; border-radius: 8px;">
               <h2 style="color: #d4af37; margin-top: 0;">New Project Quotation Request</h2>
@@ -369,7 +369,7 @@ app.get('/api/quotes', (req: Request, res: Response) => {
   }
 
   const authHeader = req.headers.authorization;
-  const match = authHeader?.match(/^Bearer (\\S+)$/);
+  const match = authHeader?.match(/^Bearer (\S+)$/);
   if (!match) {
     return res.status(401).json({
       success: false,
