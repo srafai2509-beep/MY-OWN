@@ -327,7 +327,7 @@ app.get('/api/quotes', (req: Request, res: Response) => {
   }
 
   const authHeader = req.headers.authorization;
-  const match = authHeader?.match(/^Bearer ([^\\s]+)$/);
+  const match = authHeader?.match(/^Bearer (\\S+)$/);
   if (!match) {
     return res.status(401).json({
       success: false,
