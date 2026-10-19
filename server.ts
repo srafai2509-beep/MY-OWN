@@ -13,6 +13,12 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 app.disable('x-powered-by');
+// Set TRUST_PROXY_HOPS only to the exact number of trusted reverse proxies in front of this app.
+// Leave unset when the server is reached directly; never use a broad trust setting without verifying the hosting topology.
+const trustProxyHops = Number(process.env.TRUST_PROXY_HOPS);
+if (process.env.TRUST_PROXY_HOPS && Number.isInteger(trustProxyHops) && trustProxyHops >= 1 && trustProxyHops <= 5) {
+  app.set('trust proxy', trustProxyHops);
+}
 const PORT = process.env.PORT || 3000;
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const SOFIA_EMAIL = 'srafai.6768@gmail.com';
