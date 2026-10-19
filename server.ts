@@ -3,6 +3,7 @@ import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import nodemailer from 'nodemailer';
+import { timingSafeEqual } from 'node:crypto';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -11,16 +12,43 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+app.disable('x-powered-by');
+// Set TRUST_PROXY_HOPS only to the exact number of trusted reverse proxies in front of this app.
+// Leave unset when the server is reached directly; never use a broad trust setting without verifying the hosting topology.
+const trustProxyHops = Number(process.env.TRUST_PROXY_HOPS);
+if (process.env.TRUST_PROXY_HOPS && Number.isInteger(trustProxyHops) && trustProxyHops >= 1 && trustProxyHops <= 5) {
+  app.set('trust proxy', trustProxyHops);
+}
 const PORT = process.env.PORT || 3000;
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const SOFIA_EMAIL = 'srafai.6768@gmail.com';
-const ADMIN_API_KEY = process.env.ADMIN_API_KEY || 'sofia-admin-secret';
+// Never use a hardcoded fallback for administrative credentials.
+const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
 
-// Security Headers Middleware
+// Security headers. CSP permits only this app plus the Google Fonts used by index.html.
 app.use((_req: Request, res: Response, next: NextFunction) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  res.setHeader('Content-Security-Policy', [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "frame-ancestors 'self'",
+    "form-action 'self' https://wa.me",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "img-src 'self' data: blob: https:",
+    "connect-src 'self' https:",
+    ...(IS_PRODUCTION ? ['upgrade-insecure-requests'] : []),
+  ].join('; '));
+  if (IS_PRODUCTION) {
+    // Deliberately omit includeSubDomains: this app does not control the parent domain.
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000');
+  }
   next();
 });
 
@@ -55,10 +83,31 @@ const quotationSubmissions: QuoteRecord[] = [];
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 const MAX_REQUESTS_PER_WINDOW = 5; // max 5 quote submissions per 10 mins
+let rateLimitOperations = 0;
+const MAX_TRACKED_IPS = 10000;
 
 function rateLimiter(req: Request, res: Response, next: NextFunction) {
-  const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown-ip';
+  // Use Express's resolved IP; do not trust client-supplied X-Forwarded-For directly.
+  // Configure app.set('trust proxy', ...) only for the exact trusted proxy chain in production.
+  const ip = req.ip || req.socket.remoteAddress || 'unknown-ip';
   const now = Date.now();
+  rateLimitOperations += 1;
+
+  // Periodically remove expired entries so unique IPs cannot grow the map forever.
+  if (rateLimitOperations % 100 === 0 || rateLimitMap.size >= MAX_TRACKED_IPS) {
+    for (const [trackedIp, trackedRecord] of rateLimitMap) {
+      if (now > trackedRecord.resetTime) rateLimitMap.delete(trackedIp);
+    }
+  }
+
+  // Keep memory bounded even during high-cardinality traffic.
+  if (!rateLimitMap.has(ip) && rateLimitMap.size >= MAX_TRACKED_IPS) {
+    return res.status(429).json({
+      success: false,
+      error: 'The quotation service is temporarily busy. Please try again shortly.'
+    });
+  }
+
   const record = rateLimitMap.get(ip);
 
   if (!record || now > record.resetTime) {
@@ -94,6 +143,9 @@ const PHONE_CLEAN_REGEX = /^[\d\s\+\-\(\)]{6,25}$/;
 
 // POST /api/quote - Process and send quote request with strict validation
 app.post('/api/quote', rateLimiter, async (req: Request, res: Response) => {
+  // Responses contain contact details and client-generated communication links; never cache them.
+  res.setHeader('Cache-Control', 'no-store, private, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
   try {
     const rawBody = req.body || {};
     
@@ -164,7 +216,7 @@ app.post('/api/quote', rateLimiter, async (req: Request, res: Response) => {
       emailDispatched: false
     };
 
-    console.log(`[QUOTATION SUBMITTED] ID: ${quoteId} | Client: ${name} | Services: ${sanitizedServices.length}`);
+    console.log(`[QUOTATION SUBMITTED] ID: ${quoteId} | Client: ${name.replace(/[\r\n\t]/g, ' ')} | Services: ${sanitizedServices.length}`);
 
     // Attempt to dispatch email if SMTP is configured
     let emailSent = false;
@@ -198,7 +250,7 @@ app.post('/api/quote', rateLimiter, async (req: Request, res: Response) => {
           from: `"Sofia Portfolio Quotations" <${process.env.SMTP_USER}>`,
           to: SOFIA_EMAIL,
           replyTo: email || undefined,
-          subject: `✨ New Client Quotation Request: ${safeName} (${sanitizedServices.slice(0, 2).join(', ')})`,
+subject: `New Client Quotation Request: ${name.replace(/[\r\n\t]/g, ' ').slice(0, 100)} (${sanitizedServices.slice(0, 2).join(', ').replace(/[\r\n\t]/g, ' ').slice(0, 160)})`,
           html: `
             <div style="font-family: sans-serif; background: #0c0d10; color: #e4e4e9; padding: 24px; border-radius: 8px;">
               <h2 style="color: #d4af37; margin-top: 0;">New Project Quotation Request</h2>
@@ -313,16 +365,31 @@ app.post('/api/quote', rateLimiter, async (req: Request, res: Response) => {
 
 // GET /api/quotes - Authenticated administrative endpoint
 app.get('/api/quotes', (req: Request, res: Response) => {
+  // Client quotation data contains personal information and must never be cached.
+  res.setHeader('Cache-Control', 'no-store, private, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  // Fail closed if production secrets are missing or too weak.
+  if (!ADMIN_API_KEY || ADMIN_API_KEY.length < 32) {
+    console.error('ADMIN_API_KEY is missing or too short; refusing admin API access.');
+    return res.status(503).json({
+      success: false,
+      error: 'Administrative access is not configured.'
+    });
+  }
+
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  const match = authHeader?.match(/^Bearer (\S+)$/);
+  if (!match) {
     return res.status(401).json({
       success: false,
       error: 'Unauthorized: Authentication token is required to access client quotations.'
     });
   }
 
-  const token = authHeader.split(' ')[1];
-  if (token !== ADMIN_API_KEY) {
+  const supplied = Buffer.from(match[1], 'utf8');
+  const expected = Buffer.from(ADMIN_API_KEY, 'utf8');
+  // timingSafeEqual requires equal-length buffers.
+  if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {
     return res.status(403).json({
       success: false,
       error: 'Forbidden: Invalid administrator credentials.'
