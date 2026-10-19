@@ -143,6 +143,9 @@ const PHONE_CLEAN_REGEX = /^[\d\s\+\-\(\)]{6,25}$/;
 
 // POST /api/quote - Process and send quote request with strict validation
 app.post('/api/quote', rateLimiter, async (req: Request, res: Response) => {
+  // Responses contain contact details and client-generated communication links; never cache them.
+  res.setHeader('Cache-Control', 'no-store, private, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
   try {
     const rawBody = req.body || {};
     
