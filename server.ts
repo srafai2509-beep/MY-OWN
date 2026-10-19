@@ -12,17 +12,37 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+app.disable('x-powered-by');
 const PORT = process.env.PORT || 3000;
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const SOFIA_EMAIL = 'srafai.6768@gmail.com';
 // Never use a hardcoded fallback for administrative credentials.
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
 
-// Security Headers Middleware
+// Security headers. CSP permits only this app plus the Google Fonts used by index.html.
 app.use((_req: Request, res: Response, next: NextFunction) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  res.setHeader('Content-Security-Policy', [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "frame-ancestors 'self'",
+    "form-action 'self' https://wa.me",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "img-src 'self' data: blob: https:",
+    "connect-src 'self' https:",
+    ...(IS_PRODUCTION ? ['upgrade-insecure-requests'] : []),
+  ].join('; '));
+  if (IS_PRODUCTION) {
+    // Deliberately omit includeSubDomains: this app does not control the parent domain.
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000');
+  }
   next();
 });
 
@@ -57,12 +77,31 @@ const quotationSubmissions: QuoteRecord[] = [];
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 const MAX_REQUESTS_PER_WINDOW = 5; // max 5 quote submissions per 10 mins
+let rateLimitOperations = 0;
+const MAX_TRACKED_IPS = 10000;
 
 function rateLimiter(req: Request, res: Response, next: NextFunction) {
   // Use Express's resolved IP; do not trust client-supplied X-Forwarded-For directly.
   // Configure app.set('trust proxy', ...) only for the exact trusted proxy chain in production.
   const ip = req.ip || req.socket.remoteAddress || 'unknown-ip';
   const now = Date.now();
+  rateLimitOperations += 1;
+
+  // Periodically remove expired entries so unique IPs cannot grow the map forever.
+  if (rateLimitOperations % 100 === 0 || rateLimitMap.size >= MAX_TRACKED_IPS) {
+    for (const [trackedIp, trackedRecord] of rateLimitMap) {
+      if (now > trackedRecord.resetTime) rateLimitMap.delete(trackedIp);
+    }
+  }
+
+  // Keep memory bounded even during high-cardinality traffic.
+  if (!rateLimitMap.has(ip) && rateLimitMap.size >= MAX_TRACKED_IPS) {
+    return res.status(429).json({
+      success: false,
+      error: 'The quotation service is temporarily busy. Please try again shortly.'
+    });
+  }
+
   const record = rateLimitMap.get(ip);
 
   if (!record || now > record.resetTime) {
@@ -317,6 +356,9 @@ app.post('/api/quote', rateLimiter, async (req: Request, res: Response) => {
 
 // GET /api/quotes - Authenticated administrative endpoint
 app.get('/api/quotes', (req: Request, res: Response) => {
+  // Client quotation data contains personal information and must never be cached.
+  res.setHeader('Cache-Control', 'no-store, private, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
   // Fail closed if production secrets are missing or too weak.
   if (!ADMIN_API_KEY || ADMIN_API_KEY.length < 32) {
     console.error('ADMIN_API_KEY is missing or too short; refusing admin API access.');
