@@ -3,6 +3,7 @@ import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import nodemailer from 'nodemailer';
+import { timingSafeEqual } from 'node:crypto';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -13,7 +14,8 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 const SOFIA_EMAIL = 'srafai.6768@gmail.com';
-const ADMIN_API_KEY = process.env.ADMIN_API_KEY || 'sofia-admin-secret';
+// Never use a hardcoded fallback for administrative credentials.
+const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
 
 // Security Headers Middleware
 app.use((_req: Request, res: Response, next: NextFunction) => {
@@ -57,7 +59,9 @@ const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 const MAX_REQUESTS_PER_WINDOW = 5; // max 5 quote submissions per 10 mins
 
 function rateLimiter(req: Request, res: Response, next: NextFunction) {
-  const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown-ip';
+  // Use Express's resolved IP; do not trust client-supplied X-Forwarded-For directly.
+  // Configure app.set('trust proxy', ...) only for the exact trusted proxy chain in production.
+  const ip = req.ip || req.socket.remoteAddress || 'unknown-ip';
   const now = Date.now();
   const record = rateLimitMap.get(ip);
 
@@ -313,16 +317,28 @@ app.post('/api/quote', rateLimiter, async (req: Request, res: Response) => {
 
 // GET /api/quotes - Authenticated administrative endpoint
 app.get('/api/quotes', (req: Request, res: Response) => {
+  // Fail closed if production secrets are missing or too weak.
+  if (!ADMIN_API_KEY || ADMIN_API_KEY.length < 32) {
+    console.error('ADMIN_API_KEY is missing or too short; refusing admin API access.');
+    return res.status(503).json({
+      success: false,
+      error: 'Administrative access is not configured.'
+    });
+  }
+
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  const match = authHeader?.match(/^Bearer ([^\\s]+)$/);
+  if (!match) {
     return res.status(401).json({
       success: false,
       error: 'Unauthorized: Authentication token is required to access client quotations.'
     });
   }
 
-  const token = authHeader.split(' ')[1];
-  if (token !== ADMIN_API_KEY) {
+  const supplied = Buffer.from(match[1], 'utf8');
+  const expected = Buffer.from(ADMIN_API_KEY, 'utf8');
+  // timingSafeEqual requires equal-length buffers.
+  if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {
     return res.status(403).json({
       success: false,
       error: 'Forbidden: Invalid administrator credentials.'
