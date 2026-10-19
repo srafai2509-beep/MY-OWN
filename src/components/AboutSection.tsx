@@ -18,14 +18,14 @@ export const AboutSection: React.FC = () => {
           </h2>
 
           <p className="text-zinc-300 text-base sm:text-lg font-light leading-relaxed mb-6">
-            Hi, I&apos;m <span className="font-medium text-white">Sofia Rafai</span>, a creative freelancer from Rajkot, Gujarat. 
+            Hi, I&apos;m <span className="font-medium text-white">Sofia Rafai</span>, a creative freelancer based in Mumbai & Rajkot, Gujarat. 
             I bring together visual design, multilingual voice narration, user-generated video content, and real backend business automations under one unified workflow.
           </p>
 
           <blockquote className="p-6 bg-[#13141a] border border-[#d4af37]/30 rounded-sm relative text-zinc-200 text-sm sm:text-base italic leading-relaxed">
             &ldquo;I am a fresher, so every sample you see is created by me, and I put full effort into each project.&rdquo;
             <div className="mt-2 not-italic text-xs text-[#d4af37] font-semibold tracking-wider uppercase">
-              — Sofia Rafai, Rajkot
+              — Sofia Rafai, Mumbai · Rajkot
             </div>
           </blockquote>
         </div>
@@ -72,9 +72,9 @@ export const AboutSection: React.FC = () => {
               <MapPin className="w-5 h-5" />
             </div>
             <div className="text-xs uppercase tracking-wider text-zinc-400 mb-1 font-semibold">Based In</div>
-            <div className="text-xl font-bold font-cormorant text-white mb-2">Rajkot, Gujarat</div>
+            <div className="text-xl font-bold font-cormorant text-white mb-2">Mumbai · Rajkot, Gujarat</div>
             <p className="text-xs text-zinc-400 leading-relaxed font-light">
-              Available for remote freelance collaborations across India and globally, with real manufacturing and local retail insights.
+              Available for remote and on-site freelance collaborations across Mumbai, Gujarat, India, and worldwide.
             </p>
           </TiltCard3D>
 

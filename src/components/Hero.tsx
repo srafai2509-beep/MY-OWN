@@ -31,7 +31,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenContact, onExploreWork, onOpen
             <div className="flex items-center gap-2 text-xs font-semibold tracking-[0.25em] text-[#d4af37] uppercase">
               <span>Freelance Portfolio</span>
               <span aria-hidden="true">·</span>
-              <span className="text-zinc-400">Rajkot, Gujarat</span>
+              <span className="text-zinc-400">Mumbai · Rajkot, Gujarat</span>
             </div>
 
             {/* Main Headline */}
@@ -125,7 +125,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenContact, onExploreWork, onOpen
                     CREATIVE STUDIO · SOFIA RAFAI
                   </div>
                   <div className="text-[10px] text-zinc-300 drop-shadow">
-                    Rajkot, Gujarat · Websites · Voiceovers · Workflows
+                    Mumbai · Rajkot, Gujarat · Websites · Voiceovers · Workflows
                   </div>
                 </div>
               </div>

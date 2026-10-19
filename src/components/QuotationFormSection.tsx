@@ -43,6 +43,7 @@ export const QuotationFormSection: React.FC<QuotationFormSectionProps> = ({ pres
     id: string;
     directMailtoUrl: string;
     directWhatsAppUrl: string;
+    directWhatsAppUrlAlt: string;
     targetEmail: string;
   } | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -98,6 +99,7 @@ export const QuotationFormSection: React.FC<QuotationFormSectionProps> = ({ pres
           id: data.quote.id,
           directMailtoUrl: data.directMailtoUrl,
           directWhatsAppUrl: data.directWhatsAppUrl,
+          directWhatsAppUrlAlt: data.directWhatsAppUrlAlt || `https://wa.me/${CREATOR_PROFILE.secondaryPhone}`,
           targetEmail: data.targetEmail,
         });
       } else {
@@ -112,7 +114,11 @@ export const QuotationFormSection: React.FC<QuotationFormSectionProps> = ({ pres
         `Hi Sofia,\n\nName: ${formData.name}\nPhone: ${formData.phone}\nEmail: ${formData.email}\nServices: ${selectedServices.join(', ')}\nTimeline: ${formData.projectTimeline}\nNotes: ${formData.projectBrief}`
       )}`;
       
-      const fallbackWhatsApp = `https://wa.me/${CREATOR_PROFILE.phone}?text=${encodeURIComponent(
+      const fallbackWhatsApp = `https://wa.me/${CREATOR_PROFILE.primaryPhone}?text=${encodeURIComponent(
+        `Hi Sofia, I'm requesting a quotation for:\n• Services: ${selectedServices.join(', ')}\n• Timeline: ${formData.projectTimeline}\n• From: ${formData.name} (${formData.phone})`
+      )}`;
+
+      const fallbackWhatsAppAlt = `https://wa.me/${CREATOR_PROFILE.secondaryPhone}?text=${encodeURIComponent(
         `Hi Sofia, I'm requesting a quotation for:\n• Services: ${selectedServices.join(', ')}\n• Timeline: ${formData.projectTimeline}\n• From: ${formData.name} (${formData.phone})`
       )}`;
 
@@ -120,6 +126,7 @@ export const QuotationFormSection: React.FC<QuotationFormSectionProps> = ({ pres
         id: `OFFLINE-${Date.now()}`,
         directMailtoUrl: fallbackMailto,
         directWhatsAppUrl: fallbackWhatsApp,
+        directWhatsAppUrlAlt: fallbackWhatsAppAlt,
         targetEmail: CREATOR_PROFILE.email,
       });
     } finally {
@@ -194,21 +201,32 @@ export const QuotationFormSection: React.FC<QuotationFormSectionProps> = ({ pres
                 href={submittedData.directWhatsAppUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 px-6 py-3 text-xs font-semibold uppercase tracking-widest text-[#0c0d10] bg-[#d4af37] hover:bg-[#e2c158] transition-all rounded-xs shadow-md cursor-pointer active:scale-95"
+                className="inline-flex items-center gap-2 px-5 py-3 text-xs font-semibold uppercase tracking-widest text-[#0c0d10] bg-[#d4af37] hover:bg-[#e2c158] transition-all rounded-xs shadow-md cursor-pointer active:scale-95"
               >
                 <MessageCircle className="w-4 h-4" />
-                <span>Confirm on WhatsApp</span>
+                <span>WhatsApp (Primary: {CREATOR_PROFILE.primaryPhone})</span>
+              </a>
+
+              <a
+                href={submittedData.directWhatsAppUrlAlt}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 px-5 py-3 text-xs font-semibold uppercase tracking-widest text-zinc-100 bg-emerald-700/80 hover:bg-emerald-600 transition-all rounded-xs shadow-md cursor-pointer active:scale-95"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>WhatsApp (Alt: {CREATOR_PROFILE.secondaryPhone})</span>
               </a>
 
               <a
                 href={submittedData.directMailtoUrl}
-                className="inline-flex items-center gap-2 px-6 py-3 text-xs font-semibold uppercase tracking-widest text-zinc-200 hover:text-white bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.15] transition-all rounded-xs cursor-pointer"
+                className="inline-flex items-center gap-2 px-5 py-3 text-xs font-semibold uppercase tracking-widest text-zinc-200 hover:text-white bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.15] transition-all rounded-xs cursor-pointer"
               >
                 <Mail className="w-4 h-4 text-[#d4af37]" />
                 <span>Open in Mail App</span>
               </a>
 
               <button
+                type="button"
                 onClick={handleReset}
                 className="inline-flex items-center gap-1.5 px-4 py-3 text-xs text-zinc-400 hover:text-white transition-colors cursor-pointer"
               >
@@ -479,7 +497,7 @@ export const QuotationFormSection: React.FC<QuotationFormSectionProps> = ({ pres
                   </div>
                   <div className="flex items-center gap-1.5 text-zinc-300">
                     <CheckCircle2 className="w-3.5 h-3.5 text-[#d4af37]" />
-                    <span>Direct WhatsApp line: {CREATOR_PROFILE.phone}</span>
+                    <span>WhatsApp / Calls: {CREATOR_PROFILE.primaryPhone} | {CREATOR_PROFILE.secondaryPhone}</span>
                   </div>
                 </div>
               </TiltCard3D>

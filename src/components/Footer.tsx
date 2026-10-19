@@ -19,7 +19,7 @@ export const Footer: React.FC = () => {
               SOFIA RAFAI
             </span>
             <p className="text-xs text-zinc-400 max-w-sm font-light">
-              {CREATOR_PROFILE.tagline} · Creative Freelancer from Rajkot, Gujarat.
+              {CREATOR_PROFILE.tagline} · Creative Freelancer based in Mumbai & Rajkot, Gujarat.
             </p>
           </div>
 
@@ -49,17 +49,26 @@ export const Footer: React.FC = () => {
         {/* Bottom row */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-zinc-500">
           <div>
-            © {new Date().getFullYear()} Sofia Rafai. All rights reserved. Made in Rajkot, Gujarat, India.
+            © {new Date().getFullYear()} Sofia Rafai. All rights reserved. Mumbai · Rajkot, Gujarat, India.
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3">
             <a 
-              href={`https://wa.me/${CREATOR_PROFILE.phone}`} 
+              href={`https://wa.me/${CREATOR_PROFILE.primaryPhone}`} 
               target="_blank" 
               rel="noreferrer" 
               className="hover:text-[#d4af37] transition-colors"
             >
-              WhatsApp
+              WhatsApp: {CREATOR_PROFILE.primaryPhone}
+            </a>
+            <span>·</span>
+            <a 
+              href={`https://wa.me/${CREATOR_PROFILE.secondaryPhone}`} 
+              target="_blank" 
+              rel="noreferrer" 
+              className="hover:text-[#d4af37] transition-colors"
+            >
+              Alt: {CREATOR_PROFILE.secondaryPhone}
             </a>
             <span>·</span>
             <a 

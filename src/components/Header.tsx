@@ -104,13 +104,23 @@ export const Header: React.FC<HeaderProps> = ({ onOpenContact, onOpenQuotation }
               </button>
 
               <a
-                href={`https://wa.me/${CREATOR_PROFILE.phone}?text=Hi%20Sofia,%20I%20saw%20your%20freelance%20portfolio%20and%20would%20like%20to%20discuss%20a%20project.`}
+                href={`https://wa.me/${CREATOR_PROFILE.primaryPhone}?text=Hi%20Sofia,%20I%20saw%20your%20freelance%20portfolio%20and%20would%20like%20to%20discuss%20a%20project.`}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-semibold uppercase tracking-wider text-zinc-200 bg-white/[0.05] border border-white/[0.1] rounded-sm"
+                className="flex items-center justify-center gap-2 w-full py-2 text-xs font-semibold uppercase tracking-wider text-zinc-200 bg-white/[0.05] border border-white/[0.1] rounded-sm"
               >
                 <MessageCircle className="w-4 h-4 text-emerald-400" />
-                <span>WhatsApp: {CREATOR_PROFILE.phone}</span>
+                <span>WhatsApp: {CREATOR_PROFILE.primaryPhone}</span>
+              </a>
+
+              <a
+                href={`https://wa.me/${CREATOR_PROFILE.secondaryPhone}?text=Hi%20Sofia,%20I%20saw%20your%20freelance%20portfolio%20and%20would%20like%20to%20discuss%20a%20project.`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-center gap-2 w-full py-2 text-xs font-semibold uppercase tracking-wider text-zinc-300 bg-white/[0.03] border border-white/[0.08] rounded-sm"
+              >
+                <MessageCircle className="w-4 h-4 text-blue-400" />
+                <span>Alt: {CREATOR_PROFILE.secondaryPhone}</span>
               </a>
             </div>
           </div>

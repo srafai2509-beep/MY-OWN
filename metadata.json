@@ -1,6 +1,8 @@
 {
   "name": "Sofia Rafai - Creative Freelance Portfolio",
-  "description": "Freelance portfolio for Sofia Rafai - Web Design, Voice Narration, UGC Content, Posters, Tile & Wall Design, Logo Design, Business Automation, and Backend Office Work.",
+  "description": "Freelance portfolio for Sofia Rafai - Web Design, Voice Narration, UGC Content, Posters, Tile & Wall Design, Logo Design, Business Automation, and Backend Office Work. Based in Mumbai & Rajkot, Gujarat.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

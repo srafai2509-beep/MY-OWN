@@ -25,17 +25,21 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ presetMessage = 
   });
 
   const [copiedEmail, setCopiedEmail] = useState(false);
-  const [copiedPhone, setCopiedPhone] = useState(false);
+  const [copiedPhone1, setCopiedPhone1] = useState(false);
+  const [copiedPhone2, setCopiedPhone2] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const handleCopy = (text: string, type: 'email' | 'phone') => {
+  const handleCopy = (text: string, type: 'email' | 'phone1' | 'phone2') => {
     navigator.clipboard.writeText(text);
     if (type === 'email') {
       setCopiedEmail(true);
       setTimeout(() => setCopiedEmail(false), 2000);
+    } else if (type === 'phone1') {
+      setCopiedPhone1(true);
+      setTimeout(() => setCopiedPhone1(false), 2000);
     } else {
-      setCopiedPhone(true);
-      setTimeout(() => setCopiedPhone(false), 2000);
+      setCopiedPhone2(true);
+      setTimeout(() => setCopiedPhone2(false), 2000);
     }
   };
 
@@ -45,7 +49,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ presetMessage = 
     
     // Open directly in WhatsApp
     const encoded = encodeURIComponent(formattedMessage);
-    window.open(`https://wa.me/${CREATOR_PROFILE.phone}?text=${encoded}`, '_blank');
+    window.open(`https://wa.me/${CREATOR_PROFILE.primaryPhone}?text=${encoded}`, '_blank');
     setSubmitted(true);
   };
 
@@ -78,7 +82,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ presetMessage = 
             <div className="flex flex-wrap items-center gap-4 text-xs font-mono text-[#f4ecd8]">
               <span>Sofia Rafai · Freelance Creator</span>
               <span className="text-zinc-600">|</span>
-              <span>Rajkot, Gujarat, India</span>
+              <span>Mumbai · Rajkot, Gujarat</span>
               <span className="text-zinc-600">|</span>
               <span className="text-[#d4af37]">{CREATOR_PROFILE.email}</span>
             </div>
@@ -91,7 +95,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ presetMessage = 
           {/* Left Column: Direct channels with 3D Tilt */}
           <div className="lg:col-span-5 space-y-4">
             
-            {/* WhatsApp */}
+            {/* WhatsApp / Phone 1 */}
             <TiltCard3D maxTilt={6} glareOpacity={0.15}>
               <div className="p-6 bg-[#121318] border border-white/[0.08] rounded-sm hover:border-[#d4af37]/50 transition-colors">
                 <div className="flex items-start justify-between">
@@ -100,22 +104,59 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ presetMessage = 
                       <MessageCircle className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="text-xs text-zinc-400 font-medium">WhatsApp (Instant Chat)</div>
-                      <div className="text-base font-bold text-white font-mono">{CREATOR_PROFILE.phone}</div>
+                      <div className="text-xs text-zinc-400 font-medium">WhatsApp & Call (Primary)</div>
+                      <div className="text-base font-bold text-white font-mono">{CREATOR_PROFILE.primaryPhone}</div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
-                      onClick={() => handleCopy(CREATOR_PROFILE.phone, 'phone')}
+                      onClick={() => handleCopy(CREATOR_PROFILE.primaryPhone, 'phone1')}
                       className="p-2 text-zinc-400 hover:text-white rounded-xs transition-colors cursor-pointer"
                       title="Copy phone"
                     >
-                      {copiedPhone ? <CheckCircle className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                      {copiedPhone1 ? <CheckCircle className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
                     </button>
                     <a
-                      href={`https://wa.me/${CREATOR_PROFILE.phone}?text=Hi%20Sofia,%20I%20would%20like%20to%20discuss%20a%20freelance%20project.`}
+                      href={`https://wa.me/${CREATOR_PROFILE.primaryPhone}?text=Hi%20Sofia,%20I%20would%20like%20to%20discuss%20a%20freelance%20project.`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="p-2 text-[#d4af37] hover:text-[#e2c158] transition-colors"
+                      title="Open WhatsApp"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </TiltCard3D>
+
+            {/* Direct Phone 2 */}
+            <TiltCard3D maxTilt={6} glareOpacity={0.15}>
+              <div className="p-6 bg-[#121318] border border-white/[0.08] rounded-sm hover:border-[#d4af37]/50 transition-colors">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-sm bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                      <MessageCircle className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="text-xs text-zinc-400 font-medium">Direct Line & WhatsApp (Alternate)</div>
+                      <div className="text-base font-bold text-white font-mono">{CREATOR_PROFILE.secondaryPhone}</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(CREATOR_PROFILE.secondaryPhone, 'phone2')}
+                      className="p-2 text-zinc-400 hover:text-white rounded-xs transition-colors cursor-pointer"
+                      title="Copy phone"
+                    >
+                      {copiedPhone2 ? <CheckCircle className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                    <a
+                      href={`https://wa.me/${CREATOR_PROFILE.secondaryPhone}?text=Hi%20Sofia,%20I%20would%20like%20to%20discuss%20a%20freelance%20project.`}
                       target="_blank"
                       rel="noreferrer"
                       className="p-2 text-[#d4af37] hover:text-[#e2c158] transition-colors"
@@ -171,9 +212,9 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ presetMessage = 
                     <MapPin className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="text-xs text-zinc-400 font-medium">Location</div>
-                    <div className="text-sm font-semibold text-white">{CREATOR_PROFILE.location}</div>
-                    <div className="text-[11px] text-zinc-400">Available remotely across India & worldwide</div>
+                    <div className="text-xs text-zinc-400 font-medium">Placed In / Base Location</div>
+                    <div className="text-sm font-semibold text-white">Mumbai · Rajkot, Gujarat</div>
+                    <div className="text-[11px] text-zinc-400">Available remotely & on-site across Mumbai, Gujarat & worldwide</div>
                   </div>
                 </div>
               </div>

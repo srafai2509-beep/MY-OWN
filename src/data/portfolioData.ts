@@ -1,18 +1,27 @@
 import { ServiceItem, PortfolioProject, AutomationWorkflow, BackendWorkArea, QuotationServiceOption } from '../types/portfolio';
+import heroWorkspaceImg from '../assets/images/hero_creative_workspace_1792344483251.jpg';
+import webSweetsImg from '../assets/images/web_showcase_sweets_1792344483752.jpg';
+import ugcBeautyImg from '../assets/images/ugc_aesthetic_beauty_1792344483985.jpg';
+import tileWallImg from '../assets/images/tile_wall_design_1792344484581.jpg';
+import brandingLogoImg from '../assets/images/branding_logo_minimal_1792344485118.jpg';
 
 export const CREATOR_PROFILE = {
   name: "Sofia Rafai",
   tagline: "Everything creative, under one roof",
   title: "Creative Freelancer & Automation Specialist",
   fresherBadge: "FRESHER · 100% ORIGINAL SAMPLES",
-  location: "Rajkot, Gujarat, India",
+  location: "Mumbai · Rajkot, Gujarat, India",
+  basedIn: "Mumbai & Rajkot, Gujarat",
   email: "srafai.6768@gmail.com",
   phone: "9909663883",
+  primaryPhone: "9909663883",
+  secondaryPhone: "9265145093",
+  phoneList: ["9909663883", "9265145093"],
   whatsappNumber: "+919909663883",
   languages: ["Hindi", "English", "Gujarati"],
   style: "Soft, clean, aesthetic",
-  heroImage: "/src/assets/images/hero_creative_workspace_1792344483251.jpg",
-  bio: "Hi, I'm Sofia Rafai, a creative freelancer from Rajkot. I design websites, narrate voiceovers, create UGC content, make posters, design tiles and logos, build automations with n8n, Zapier and Power Automate, and handle backend office work — all with a soft, aesthetic touch and a real business mindset. I am a fresher, so every sample you see is created by me, and I put full effort into each project.",
+  heroImage: heroWorkspaceImg,
+  bio: "Hi, I'm Sofia Rafai, a creative freelancer based in Mumbai & Rajkot, Gujarat. I design websites, narrate voiceovers, create UGC content, make posters, design tiles and logos, build automations with n8n, Zapier and Power Automate, and handle backend office work — all with a soft, aesthetic touch and a real business mindset. I am a fresher, so every sample you see is created by me, and I put full effort into each project.",
   guarantee: "Quick turnaround, transparent communication, one free revision included with every project."
 };
 
@@ -106,7 +115,7 @@ export const PORTFOLIO_PROJECTS: PortfolioProject[] = [
     category: "web",
     subtitle: "Confectionery & Traditional Snack E-commerce Portal",
     description: "A rich, appetite-inducing digital storefront crafted for a heritage Indian sweet and savory delicacy house. Features categorized farsan listings, gift hamper selections, and direct WhatsApp quick-ordering.",
-    image: "/src/assets/images/web_showcase_sweets_1792344483752.jpg",
+    image: webSweetsImg,
     tags: ["Web Design", "Local Business", "E-Commerce", "Responsive"],
     deliverables: ["Responsive Web Layout", "Online Menu & Gift Sets", "WhatsApp Cart Checkout", "SEO Meta Tags"],
     metricsOrOutcome: "Clean mobile catalog with instant WhatsApp order trigger"
@@ -117,7 +126,7 @@ export const PORTFOLIO_PROJECTS: PortfolioProject[] = [
     category: "web",
     subtitle: "Modern Indian Ethnic Wear Web Catalog",
     description: "Clean, editorial fashion showcase with lookbook layouts, fabric details, size chart overlays, and seamless mobile navigation designed for boutique apparel sales.",
-    image: "/src/assets/images/branding_logo_minimal_1792344485118.jpg",
+    image: brandingLogoImg,
     tags: ["Web Design", "Fashion Catalog", "Minimal UI", "Boutique"],
     deliverables: ["Product Grid View", "Filter by Category & Fabric", "Mobile Responsive Touch Navigation"],
     metricsOrOutcome: "Soft luxury presentation elevating local boutique reach"
@@ -138,7 +147,7 @@ export const PORTFOLIO_PROJECTS: PortfolioProject[] = [
     category: "web",
     subtitle: "Heritage Confectionery Brand Identity & Digital Presence",
     description: "An authentic, warm digital showcase highlighting handcrafted festive sweets, dry fruit gift boxes, and bulk festival orders with clear delivery areas.",
-    image: "/src/assets/images/web_showcase_sweets_1792344483752.jpg",
+    image: webSweetsImg,
     tags: ["Web Design", "Heritage Sweets", "Festive Hampers", "Local Business"],
     deliverables: ["Festive Gift Portal", "Custom Bulk Order Inquiries", "Store Locator & Timings"],
     metricsOrOutcome: "Streamlined bulk festive order inquiries"
@@ -166,7 +175,7 @@ export const PORTFOLIO_PROJECTS: PortfolioProject[] = [
     category: "ugc",
     subtitle: "Organic Video Content for Beauty, Books, Fashion & Jewellery",
     description: "Curated, soft-aesthetic user-generated content filmed with natural daylight, elegant tactile props, and high-retention visual hooks. Designed specifically for brands seeking organic trust without loud sponsored gimmicks.",
-    image: "/src/assets/images/ugc_aesthetic_beauty_1792344483985.jpg",
+    image: ugcBeautyImg,
     tags: ["UGC Content", "Faceless Aesthetic", "Jewellery & Beauty", "Reels / TikTok"],
     deliverables: ["Vertical 9:16 Short Video", "Aesthetic Flatlays & B-Roll", "Trending Audio Recommendation", "Overlay Captions"],
     metricsOrOutcome: "Soft, clean lifestyle framing designed for high audience engagement"
@@ -177,7 +186,7 @@ export const PORTFOLIO_PROJECTS: PortfolioProject[] = [
     category: "tile",
     subtitle: "Geometric & Botanical Ceramic Tile Surfaces",
     description: "Custom decorative wall and floor tile pattern sets with seamless repeat mathematics, contemporary motifs, and balanced colorways for interior spaces, accent walls, and floor borders.",
-    image: "/src/assets/images/tile_wall_design_1792344484581.jpg",
+    image: tileWallImg,
     tags: ["Tile & Wall Design", "Surface Pattern", "Ceramic & Porcelain", "Interior Decor"],
     deliverables: ["Seamless Tile Patterns (AI/PDF)", "2D Surface Elevation Mockup", "Colorway Variations"],
     metricsOrOutcome: "Production-ready patterns with accurate repeat alignments"
@@ -188,7 +197,7 @@ export const PORTFOLIO_PROJECTS: PortfolioProject[] = [
     category: "branding",
     subtitle: "Memorable Logos for Cafes, Studios, Creators & Retail",
     description: "Thoughtfully crafted minimal logos designed to look pristine on Instagram avatars, foil-stamped business cards, product tags, packaging, and store signs.",
-    image: "/src/assets/images/branding_logo_minimal_1792344485118.jpg",
+    image: brandingLogoImg,
     tags: ["Logo Design", "Brand Identity", "Minimalism", "Typography"],
     deliverables: ["Two Unique Creative Directions", "Transparent Vector Files (PNG/PDF)", "Monochrome & Full Color Sets", "1 Free Revision"],
     metricsOrOutcome: "2 Bespoke Concepts Delivered within 48 Hours"

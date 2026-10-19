@@ -15,6 +15,8 @@ const PORT = process.env.PORT || 3000;
 const SOFIA_EMAIL = 'srafai.6768@gmail.com';
 
 app.use(express.json());
+app.use(express.static(path.resolve(__dirname, 'public')));
+app.use('/images', express.static(path.resolve(__dirname, 'public/images')));
 
 export interface QuoteRecord {
   id: string;
@@ -182,6 +184,7 @@ app.post('/api/quote', async (req, res) => {
       `Hi Sofia, I just submitted a project quotation request on your website:\n• Name: ${name}\n• Services: ${newQuote.services.join(', ')}\n• Budget: ${budgetRange}\n• Timeline: ${timeline}\n\nBrief: ${description || 'Please review my request.'}`
     );
     const directWhatsAppUrl = `https://wa.me/919909663883?text=${whatsappText}`;
+    const directWhatsAppUrlAlt = `https://wa.me/919265145093?text=${whatsappText}`;
 
     return res.status(200).json({
       success: true,
@@ -190,6 +193,7 @@ app.post('/api/quote', async (req, res) => {
       emailStatus: emailStatusMessage,
       directMailtoUrl,
       directWhatsAppUrl,
+      directWhatsAppUrlAlt,
       targetEmail: SOFIA_EMAIL
     });
 
