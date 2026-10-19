@@ -369,7 +369,7 @@ app.get('/api/quotes', (req: Request, res: Response) => {
   res.setHeader('Cache-Control', 'no-store, private, max-age=0');
   res.setHeader('Pragma', 'no-cache');
   // Fail closed if production secrets are missing or too weak.
-  if (!ADMIN_API_KEY || ADMIN_API_KEY.length < 32) {
+  if (!ADMIN_API_KEY || ADMIN_API_KEY.length < 32 || /^(replace_with_|generate_a_secure_random_key_here$)/i.test(ADMIN_API_KEY)) {
     console.error('ADMIN_API_KEY is missing or too short; refusing admin API access.');
     return res.status(503).json({
       success: false,
